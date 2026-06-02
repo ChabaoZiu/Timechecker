@@ -1,0 +1,361 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能时间二维码与演示系统</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 二维码生成库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        .font-mono-clock {
+            font-family: 'Share Tech Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-500">
+
+    <!-- 顶部状态栏 -->
+    <header class="w-full bg-slate-950/60 border-b border-slate-800 p-4 sticky top-0 backdrop-blur-md z-10">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">⏰</span>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">智能时间二维码工作台</h1>
+                    <p class="text-xs text-slate-400">扫码自动感知时间 · 晚上23点后提示“早点睡”</p>
+                </div>
+            </div>
+            <!-- 本地实时时钟 -->
+            <div class="bg-slate-900/90 px-4 py-1.5 rounded-full border border-slate-700/50 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs text-slate-400">本地时间:</span>
+                <span id="header-clock" class="text-sm font-mono-clock font-bold text-emerald-400">00:00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <main class="max-w-6xl w-full mx-auto p-4 md:p-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- 左侧：二维码配置与生成区 (40%) -->
+        <section class="lg:col-span-5 bg-slate-800/40 border border-slate-700/50 rounded-3xl p-6 backdrop-blur-md flex flex-col items-center">
+            <h2 class="text-lg font-bold text-slate-200 mb-2 self-start">第一步：配置与保存二维码</h2>
+            <p class="text-xs text-slate-400 mb-6 self-start">请在下方输入你最终要部署的真实网址。如果只是临时测试，可直接使用默认生成的二维码。</p>
+
+            <!-- 二维码实际容器 -->
+            <div class="p-5 bg-white rounded-2xl shadow-2xl inline-block mb-6 relative group">
+                <div id="qrcode" class="w-[200px] h-[200px] flex items-center justify-center text-black">
+                    <!-- 二维码将在这里生成 -->
+                </div>
+                <div class="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200 pointer-events-none">
+                    <span class="text-xs text-white font-semibold">长按或右键保存</span>
+                </div>
+            </div>
+
+            <!-- 配置输入区 -->
+            <div class="w-full space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">二维码绑定目标网址 (URL)：</label>
+                    <input type="text" id="target-url" value="https://show.time-helper.com" oninput="regenerateQR()" class="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-indigo-300 focus:outline-none focus:border-indigo-500 transition-all">
+                    <p class="text-[10px] text-slate-500 mt-1">💡 扫码后会跳转到该网址。如果你有了正式的个人主页或域名，请将其填入此处。</p>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="w-full space-y-2">
+                <button onclick="downloadQRCode()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-200 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    保存二维码到电脑/手机
+                </button>
+            </div>
+        </section>
+
+        <!-- 右侧：扫码效果交互式模拟器 (70%) -->
+        <section class="lg:col-span-7 bg-slate-800/20 border border-slate-700/30 rounded-3xl p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-200">第二步：模拟真实扫码效果</h2>
+                <div class="flex gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                </div>
+            </div>
+            
+            <p class="text-xs text-slate-400 mb-6">
+                由于直接使用手机微信扫码需要将网页发布至公网。在未发布前，你可以直接通过下方的<b>“虚拟手机模拟器”</b>，完美模拟用户在不同时间扫码时，手机上会展现出的不同画面和效果。
+            </p>
+
+            <!-- 模拟控制面板 -->
+            <div class="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 mb-6 flex flex-wrap gap-4 items-center justify-between">
+                <div class="text-xs">
+                    <span class="text-slate-400">时间模拟控制器：</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="setSimulateTime(14, 30)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition">
+                        ☀️ 模拟下午 14:30 (白天)
+                    </button>
+                    <button onclick="setSimulateTime(23, 15)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition">
+                        🌙 模拟晚上 23:15 (太晚了)
+                    </button>
+                    <button onclick="setSimulateTime(4, 45)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition">
+                        💤 模拟凌晨 04:45 (太晚了)
+                    </button>
+                    <button onclick="resetToRealTime()" class="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs px-3 py-2 rounded-lg border border-indigo-500/30 transition">
+                        🔄 恢复真实物理时间
+                    </button>
+                </div>
+            </div>
+
+            <!-- 虚拟手机外框 (iPhone Mockup) -->
+            <div class="mx-auto w-full max-w-sm bg-black rounded-[40px] p-3 shadow-2xl border-4 border-slate-700 relative overflow-hidden">
+                <!-- 手机刘海 -->
+                <div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-32 h-4 bg-black rounded-full z-20"></div>
+
+                <!-- 手机内屏 -->
+                <div id="phone-screen" class="w-full rounded-[32px] overflow-hidden aspect-[9/16] bg-slate-950 p-6 flex flex-col justify-between transition-colors duration-500 relative">
+                    
+                    <!-- 手机顶部状态栏 -->
+                    <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono select-none pt-1">
+                        <span id="phone-status-time">09:41</span>
+                        <div class="flex items-center gap-1">
+                            <span>📶</span>
+                            <span>🔋 88%</span>
+                        </div>
+                    </div>
+
+                    <!-- 动态状态核心显示 -->
+                    <div class="flex-1 flex flex-col items-center justify-center py-6">
+                        <div id="phone-card" class="w-full p-6 rounded-2xl shadow-xl border border-white/5 text-center transition-all duration-500 bg-slate-900/60">
+                            
+                            <!-- 动态SVG图标 -->
+                            <div id="phone-icon" class="w-20 h-20 mx-auto mb-4 flex items-center justify-center rounded-full bg-opacity-10">
+                                <!-- 图标动态更新 -->
+                            </div>
+
+                            <!-- 主要警示语 -->
+                            <h3 id="phone-message" class="text-2xl font-black mb-3">
+                                加载中...
+                            </h3>
+
+                            <!-- 时间展示 -->
+                            <div class="bg-black/40 py-3 px-4 rounded-xl inline-block mb-4 border border-white/5">
+                                <p class="text-[9px] uppercase tracking-widest text-slate-500 mb-0.5">扫码时刻</p>
+                                <p id="phone-time" class="text-3xl font-mono-clock font-bold tracking-wider text-emerald-400">
+                                    00:00:00
+                                </p>
+                            </div>
+
+                            <!-- 辅助介绍 -->
+                            <p id="phone-subtext" class="text-slate-400 text-xs leading-relaxed">
+                                系统正在分析您的作息规律...
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 手机底部指示条 -->
+                    <div class="w-full flex justify-center pb-1">
+                        <div class="w-24 h-1 bg-slate-700 rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="w-full text-center py-4 text-xs text-slate-600 border-t border-slate-800/40">
+        智能二维码交互式开发沙盒 · 满足夜间温馨作息提示
+    </footer>
+
+    <!-- 全局提示框容器 -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xl border border-slate-700 transition-all duration-300 opacity-0 pointer-events-none"></div>
+
+    <!-- JavaScript 代码 -->
+    <script>
+        let isSimulating = false;
+        let simulatedHour = 0;
+        let simulatedMinute = 0;
+        let simulatedSecond = 0;
+
+        // 图标资源
+        const icons = {
+            night: `<svg class="w-12 h-12 text-amber-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>`,
+            day: `<svg class="w-12 h-12 text-yellow-400 animate-spin" style="animation-duration: 20s" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.364l-.707-.707M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`
+        };
+
+        // 页面初始化
+        window.onload = function() {
+            // 初始化默认二维码
+            regenerateQR();
+            
+            // 启动定时器：每一秒更新一次界面
+            setInterval(tick, 1000);
+            tick(); // 立即执行一次
+        };
+
+        // 生成/重新生成二维码
+        function regenerateQR() {
+            const urlInput = document.getElementById('target-url').value.trim() || "https://show.time-helper.com";
+            const qrcodeContainer = document.getElementById('qrcode');
+            
+            qrcodeContainer.innerHTML = ''; // 清空原有内容
+            
+            new QRCode(qrcodeContainer, {
+                text: urlInput,
+                width: 200,
+                height: 200,
+                colorDark: "#0f172a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        // 定时逻辑（每秒刷新）
+        function tick() {
+            let now = new Date();
+            
+            // 1. 更新顶部控制台真实时间
+            const realHours = String(now.getHours()).padStart(2, '0');
+            const realMinutes = String(now.getMinutes()).padStart(2, '0');
+            const realSeconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('header-clock').innerText = `${realHours}:${realMinutes}:${realSeconds}`;
+
+            // 2. 判断当前要显示的时间（是模拟的还是真实的）
+            let displayHours, displayMinutes, displaySeconds;
+            if (isSimulating) {
+                // 模拟时间自增，维持动态跳动感
+                simulatedSecond++;
+                if (simulatedSecond >= 60) {
+                    simulatedSecond = 0;
+                    simulatedMinute++;
+                    if (simulatedMinute >= 60) {
+                        simulatedMinute = 0;
+                        simulatedHour = (simulatedHour + 1) % 24;
+                    }
+                }
+                displayHours = simulatedHour;
+                displayMinutes = simulatedMinute;
+                displaySeconds = simulatedSecond;
+            } else {
+                displayHours = now.getHours();
+                displayMinutes = now.getMinutes();
+                displaySeconds = now.getSeconds();
+            }
+
+            // 格式化输出
+            const hStr = String(displayHours).padStart(2, '0');
+            const mStr = String(displayMinutes).padStart(2, '0');
+            const sStr = String(displaySeconds).padStart(2, '0');
+
+            // 3. 更新虚拟手机界面
+            document.getElementById('phone-status-time').innerText = `${hStr}:${mStr}`;
+            document.getElementById('phone-time').innerText = `${hStr}:${mStr}:${sStr}`;
+
+            // 4. 执行核心时间判断：过了晚上 11 点 (23点) 或者没到早上 6 点
+            const isTooLate = (displayHours >= 23 || displayHours < 6);
+            updatePhoneUI(isTooLate, displayHours);
+        }
+
+        // 更新手机模拟器内部的UI样式
+        function updatePhoneUI(isTooLate, hour) {
+            const screen = document.getElementById('phone-screen');
+            const card = document.getElementById('phone-card');
+            const icon = document.getElementById('phone-icon');
+            const message = document.getElementById('phone-message');
+            const subtext = document.getElementById('phone-subtext');
+            const timeVal = document.getElementById('phone-time');
+
+            if (isTooLate) {
+                // 深夜极简睡眠主题
+                screen.className = "w-full rounded-[32px] overflow-hidden aspect-[9/16] p-6 flex flex-col justify-between transition-all duration-700 bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950";
+                card.className = "w-full p-5 rounded-2xl border border-indigo-500/10 text-center transition-all duration-500 bg-slate-900/60 shadow-[0_0_30px_rgba(99,102,241,0.15)]";
+                icon.innerHTML = icons.night;
+                icon.className = "w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full bg-indigo-500/10";
+                
+                message.innerText = "太晚了，早点睡";
+                message.className = "text-xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-400";
+                
+                subtext.innerText = "夜深了，把眼睛留给甜美的梦，把疲惫留给昨天的自己。祝你今晚有个好梦！";
+                timeVal.className = "text-2xl font-mono-clock font-bold tracking-wider text-amber-400";
+            } else {
+                // 元气满满白天主题
+                screen.className = "w-full rounded-[32px] overflow-hidden aspect-[9/16] p-6 flex flex-col justify-between transition-all duration-700 bg-gradient-to-b from-slate-900 via-slate-850 to-emerald-950";
+                card.className = "w-full p-5 rounded-2xl border border-emerald-500/10 text-center transition-all duration-500 bg-slate-800/40 shadow-[0_0_30px_rgba(16,185,129,0.1)]";
+                icon.innerHTML = icons.day;
+                icon.className = "w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full bg-emerald-500/10";
+                
+                let greeting = "你好，新的一天";
+                if (hour >= 6 && hour < 9) greeting = "早上好，朝气蓬勃";
+                else if (hour >= 9 && hour < 12) greeting = "上午好，专注当下";
+                else if (hour >= 12 && hour < 14) greeting = "午后小憩，精神饱满";
+                else if (hour >= 14 && hour < 18) greeting = "下午好，坚持就是胜利";
+                else if (hour >= 18 && hour < 23) greeting = "晚上好，享受生活";
+
+                message.innerText = greeting;
+                message.className = "text-xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-300";
+                
+                subtext.innerText = "珍惜时间，合理作息。现在是高效且健康的时间段，加油哦！";
+                timeVal.className = "text-2xl font-mono-clock font-bold tracking-wider text-emerald-400";
+            }
+        }
+
+        // 设置模拟时间
+        function setSimulateTime(h, m) {
+            isSimulating = true;
+            simulatedHour = h;
+            simulatedMinute = m;
+            simulatedSecond = 0;
+            tick();
+            showToast(`已成功将虚拟手机时间调整为 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} 进行测试！`);
+        }
+
+        // 恢复真实物理时间
+        function resetToRealTime() {
+            isSimulating = false;
+            tick();
+            showToast("已成功同步为您的电脑真实系统时间！");
+        }
+
+        // 保存二维码图片
+        function downloadQRCode() {
+            const qrImg = document.querySelector('#qrcode img');
+            const qrCanvas = document.querySelector('#qrcode canvas');
+            let dataUrl = "";
+
+            if (qrImg && qrImg.src) {
+                dataUrl = qrImg.src;
+            } else if (qrCanvas) {
+                dataUrl = qrCanvas.toDataURL("image/png");
+            }
+
+            if (dataUrl) {
+                const link = document.createElement('a');
+                link.download = '时间动态二维码.png';
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast("二维码下载已启动！");
+            } else {
+                showToast("二维码尚未加载完成，请稍后");
+            }
+        }
+
+        // Toast 消息组件
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = "fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 border border-indigo-500/30 text-indigo-200 text-xs font-semibold px-5 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 opacity-100 translate-y-0 scale-100";
+            
+            setTimeout(() => {
+                toast.className = "fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xl border border-slate-700 transition-all duration-300 opacity-0 pointer-events-none translate-y-2 scale-95";
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
+
+```
